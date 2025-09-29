@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title if title else 'Quản lý văn bản' }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/modern-styles.css">
+    <style>
+        html {
+            scroll-behavior: smooth;
+            overflow-y: overlay;
+        }
+
+        ::selection {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+        }
+
+        ::-webkit-scrollbar {
+            width: 14px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(45deg, var(--primary-light), var(--primary));
+            border-radius: 8px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            min-height: 40px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(45deg, var(--primary), var(--primary-dark));
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        .alert {
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius);
+            margin-bottom: 1.5rem;
+            animation: slideDown 0.5s ease;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .alert::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1));
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .alert:hover::before {
+            opacity: 1;
+        }
+
+        .alert-error {
+            background: rgba(220, 38, 38, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(220, 38, 38, 0.2);
+        }
+
+        .alert-success {
+            background: rgba(5, 150, 105, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(5, 150, 105, 0.2);
+        }
+
+        .alert-warning {
+            background: rgba(217, 119, 6, 0.1);
+            color: var(--warning);
+            border: 1px solid rgba(217, 119, 6, 0.2);
+        }
+    </style>
+    <script>
+        // Show loading state on form submits
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('form').forEach(form => {
+                form.addEventListener('submit', () => {
+                    const btn = form.querySelector('button[type="submit"]');
+                    if (btn) {
+                        btn.disabled = true;
+                        const originalText = btn.innerHTML;
+                        btn.innerHTML = '<span class="loading-text">Đang xử lý...</span>';
+
+                        // Reset after timeout
+                        setTimeout(() => {
+                            btn.disabled = false;
+                            btn.innerHTML = originalText;
+                        }, 10000);
+                    }
+                    form.classList.add('loading');
+                });
+            });
+
+            // Add smooth scroll to internal links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                });
+            });
+        });
+
+        // Enhanced alert helper
+        function showAlert(message, type = 'error') {
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.innerHTML = `
+                <span class="alert-icon">${type === 'error' ? '⚠️' : '✅'}</span>
+                <span class="alert-message">${message}</span>
+            `;
+            
+            const container = document.querySelector('main');
+            container.insertAdjacentElement('afterbegin', alert);
+
+            // Fade out and remove
+            setTimeout(() => {
+                alert.style.opacity = '0';
+                alert.style.transform = 'translateY(-20px)';
+                setTimeout(() => alert.remove(), 300);
+            }, 5000);
+        }
+    </script>
+</head>
+<body>
+    <div class="noise"></div>
+    <div class="container">
+        <header>
+            <h1>
+                <a href="/" style="color: inherit; text-decoration: none;">
+                    Quản lý văn bản (OCR)
+                </a>
+            </h1>
+            <p style="color: var(--gray-600); margin-top: 0.75rem; font-size: 1.125rem;">
+                🤖 Trích xuất nội dung từ PDF và ảnh • 🔍 Tìm kiếm thông minh • 📚 Quản lý tài liệu hiệu quả
+            </p>
+        </header>
+        
+        <main>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <span class="alert-icon">{{ '⚠️' if category == 'error' else '✅' }}</span>
+                            <span class="alert-message">{{ message }}</span>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</body>
+</html>

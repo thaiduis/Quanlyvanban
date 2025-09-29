@@ -1,0 +1,1255 @@
+{% extends 'base.html' %}
+{% block content %}
+{% if error %}
+<div class="error-banner">
+    <div class="error-content">
+        <span class="error-icon">⚠️</span>
+        <span class="error-text">{{ error }}</span>
+    </div>
+</div>
+{% endif %}
+
+<!-- Hero Section with Stats -->
+<div class="hero-section">
+    <div class="hero-content">
+        <div class="hero-text">
+            <h2 class="hero-title">📚 Quản lý tài liệu thông minh</h2>
+            <p class="hero-subtitle">Trích xuất nội dung từ PDF và ảnh với công nghệ OCR tiên tiến</p>
+        </div>
+        <div class="hero-stats">
+            <div class="stat-item" data-aos="fade-up" data-aos-delay="100">
+                <div class="stat-icon">📄</div>
+                <div class="stat-info">
+        <div class="stat-number" data-count="{{ total or 0 }}">0</div>
+        <div class="stat-label">Tổng tài liệu</div>
+    </div>
+            </div>
+            <div class="stat-item" data-aos="fade-up" data-aos-delay="200">
+                <div class="stat-icon">👁️</div>
+                <div class="stat-info">
+        <div class="stat-number" data-count="{{ documents|length if documents else 0 }}">0</div>
+                    <div class="stat-label">Đang hiển thị</div>
+    </div>
+    </div>
+            <div class="stat-item" data-aos="fade-up" data-aos-delay="300">
+                <div class="stat-icon">📊</div>
+                <div class="stat-info">
+        <div class="stat-number" data-count="{{ total_pages or 1 }}">0</div>
+                    <div class="stat-label">Tổng trang</div>
+    </div>
+    </div>
+            <div class="stat-item" data-aos="fade-up" data-aos-delay="400">
+                <div class="stat-icon">📍</div>
+                <div class="stat-info">
+        <div class="stat-number" data-count="{{ page or 1 }}">0</div>
+        <div class="stat-label">Trang hiện tại</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="hero-decoration">
+        <div class="floating-shapes">
+            <div class="shape shape-1"></div>
+            <div class="shape shape-2"></div>
+            <div class="shape shape-3"></div>
+            <div class="shape shape-4"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Action Panel -->
+<div class="action-panel" data-aos="fade-up" data-aos-delay="500">
+    <div class="action-header">
+        <h3 class="action-title">⚡ Thao tác nhanh</h3>
+        <p class="action-subtitle">Tìm kiếm, tải lên và quản lý tài liệu của bạn</p>
+    </div>
+    <div class="action-buttons">
+        <button onclick="toggleSearch()" class="action-btn search-btn" data-tooltip="Tìm kiếm tài liệu">
+            <div class="btn-icon">🔍</div>
+            <span class="btn-text">Tìm kiếm</span>
+            <div class="btn-ripple"></div>
+    </button>
+        <button onclick="toggleUpload()" class="action-btn upload-btn primary" data-tooltip="Tải lên tài liệu mới">
+            <div class="btn-icon">📤</div>
+            <span class="btn-text">Tải lên</span>
+            <div class="btn-ripple"></div>
+    </button>
+        <button onclick="filterByType('pdf')" class="action-btn filter-btn" id="pdfFilter" data-tooltip="Lọc tài liệu PDF">
+            <div class="btn-icon">📄</div>
+            <span class="btn-text">PDF</span>
+            <div class="btn-ripple"></div>
+    </button>
+        <button onclick="filterByType('image')" class="action-btn filter-btn" id="imageFilter" data-tooltip="Lọc hình ảnh">
+            <div class="btn-icon">🖼️</div>
+            <span class="btn-text">Ảnh</span>
+            <div class="btn-ripple"></div>
+    </button>
+    {% if q or title or tags or type %}
+        <a href="/documents/" class="action-btn clear-btn secondary" data-tooltip="Xóa tất cả bộ lọc">
+            <div class="btn-icon">🗑️</div>
+            <span class="btn-text">Xóa bộ lọc</span>
+            <div class="btn-ripple"></div>
+    </a>
+    {% endif %}
+    </div>
+</div>
+
+<!-- Search Section -->
+<div id="searchSection" class="search-panel" style="display: none;">
+    <div class="panel-header">
+        <div class="panel-title">
+            <div class="title-icon">🔍</div>
+            <div class="title-content">
+                <h3>Tìm kiếm tài liệu</h3>
+                <p>Tìm kiếm nhanh trong tiêu đề, nội dung và tags của tài liệu</p>
+    </div>
+        </div>
+        <button onclick="toggleSearch()" class="close-btn">
+            <span class="close-icon">×</span>
+        </button>
+    </div>
+    <form method="get" action="/documents/" class="search-form">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="q" class="form-label">
+                    <span class="label-icon">🔤</span>
+                    Tìm kiếm nội dung
+                </label>
+                <div class="input-wrapper">
+                <input type="text" id="q" name="q" placeholder="Nhập từ khóa cần tìm..." 
+                           value="{{ q }}" class="form-input" autocomplete="off">
+                    <div class="input-focus"></div>
+                    <div id="searchSuggestions" class="search-suggestions" style="display: none;"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="title" class="form-label">
+                    <span class="label-icon">📝</span>
+                    Tiêu đề chứa
+                </label>
+                <div class="input-wrapper">
+                <input type="text" id="title" name="title" placeholder="Nhập tiêu đề..." 
+                           value="{{ title }}" class="form-input">
+                    <div class="input-focus"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="tags" class="form-label">
+                    <span class="label-icon">🏷️</span>
+                    Tags chứa
+                </label>
+                <div class="input-wrapper">
+                <input type="text" id="tags" name="tags" placeholder="Ví dụ: công việc, báo cáo" 
+                           value="{{ tags }}" class="form-input">
+                    <div class="input-focus"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Advanced Search Options -->
+        <div class="advanced-search-options">
+            <div class="search-options-header">
+                <h4>🔍 Tùy chọn tìm kiếm nâng cao</h4>
+                <button type="button" onclick="toggleAdvancedOptions()" class="toggle-btn">
+                    <span id="toggleIcon">▼</span>
+                </button>
+            </div>
+            <div id="advancedOptions" class="advanced-options" style="display: none;">
+                <div class="options-grid">
+                    <div class="option-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="fuzzy" name="fuzzy" value="true" {{ 'checked' if fuzzy else '' }}>
+                            <span class="checkmark"></span>
+                            Tìm kiếm gần đúng (Fuzzy)
+                        </label>
+                    </div>
+                    <div class="option-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="wildcard" name="wildcard" value="true" {{ 'checked' if wildcard else '' }}>
+                            <span class="checkmark"></span>
+                            Wildcard (*, ?)
+                        </label>
+                    </div>
+                    <div class="option-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="boolean" name="boolean" value="true" {{ 'checked' if boolean else '' }}>
+                            <span class="checkmark"></span>
+                            Boolean (AND, OR, NOT)
+                        </label>
+                    </div>
+                    <div class="option-group">
+                        <label for="sort_by" class="form-label">Sắp xếp theo:</label>
+                        <select id="sort_by" name="sort_by" class="form-select">
+                            <option value="relevance" {{ 'selected' if sort_by == 'relevance' else '' }}>Độ liên quan</option>
+                            <option value="date" {{ 'selected' if sort_by == 'date' else '' }}>Ngày tạo</option>
+                            <option value="title" {{ 'selected' if sort_by == 'title' else '' }}>Tiêu đề</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="search-help">
+                    <p><strong>Hướng dẫn:</strong></p>
+                    <ul>
+                        <li><strong>Fuzzy:</strong> Tìm kiếm gần đúng, bỏ qua lỗi chính tả</li>
+                        <li><strong>Wildcard:</strong> Sử dụng * (nhiều ký tự) và ? (một ký tự)</li>
+                        <li><strong>Boolean:</strong> Sử dụng AND, OR, NOT để kết hợp từ khóa</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <span class="btn-icon">🔍</span>
+                <span class="btn-text">Tìm kiếm</span>
+                <div class="btn-ripple"></div>
+            </button>
+            <button type="button" onclick="toggleSearch()" class="btn btn-secondary">
+                <span class="btn-icon">✕</span>
+                <span class="btn-text">Đóng</span>
+                <div class="btn-ripple"></div>
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Upload Section -->
+<div id="uploadSection" class="upload-panel" style="display: none;">
+    <div class="panel-header">
+        <div class="panel-title">
+            <div class="title-icon">📤</div>
+            <div class="title-content">
+                <h3>Tải lên tài liệu</h3>
+                <p>Tải lên tài liệu PDF hoặc ảnh để trích xuất nội dung bằng OCR</p>
+    </div>
+            </div>
+        <button onclick="toggleUpload()" class="close-btn">
+            <span class="close-icon">×</span>
+        </button>
+    </div>
+    <form id="uploadForm" method="post" action="/documents/upload" enctype="multipart/form-data" class="upload-form">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="upload-title" class="form-label">
+                    <span class="label-icon">📝</span>
+                    Tiêu đề tài liệu <span class="required">*</span>
+                </label>
+                <div class="input-wrapper">
+                    <input type="text" id="upload-title" name="title" placeholder="Nhập tiêu đề..." required class="form-input">
+                    <div class="input-focus"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="upload-tags" class="form-label">
+                    <span class="label-icon">🏷️</span>
+                    Tags (tùy chọn)
+                </label>
+                <div class="input-wrapper">
+                    <input type="text" id="upload-tags" name="tags" placeholder="Ví dụ: công việc, hợp đồng" class="form-input">
+                    <div class="input-focus"></div>
+                </div>
+            </div>
+            <div class="form-group file-group">
+                <label for="upload-file" class="form-label">
+                    <span class="label-icon">📁</span>
+                    Chọn file <span class="required">*</span>
+                </label>
+                <div class="file-upload-area" id="fileUploadArea">
+                    <div class="upload-icon">📄</div>
+                    <div class="upload-text">
+                        <span class="upload-title">Kéo thả file vào đây hoặc click để chọn</span>
+                        <span class="upload-subtitle">PDF, Word, JPEG, PNG • Tối đa 10MB</span>
+            </div>
+                <input type="file" id="upload-file" name="file" required
+                       accept="application/pdf,image/jpeg,image/png,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
+                       class="file-input">
+                </div>
+                <div class="file-info" id="fileInfo" style="display: none;">
+                    <div class="file-preview">
+                        <div class="file-icon"></div>
+                        <div class="file-details">
+                            <div class="file-name"></div>
+                            <div class="file-size"></div>
+                        </div>
+                        <button type="button" class="remove-file" onclick="removeFile()">×</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <span class="btn-icon">📤</span>
+                <span class="btn-text">Tải lên tài liệu</span>
+                <div class="btn-ripple"></div>
+            </button>
+            <button type="button" onclick="toggleUpload()" class="btn btn-secondary">
+                <span class="btn-icon">✕</span>
+                <span class="btn-text">Đóng</span>
+                <div class="btn-ripple"></div>
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Document List -->
+<div class="documents-section" data-aos="fade-up" data-aos-delay="600">
+    <div class="section-header">
+        <div class="section-title">
+        <h3>📚 Danh sách tài liệu</h3>
+            <p>Quản lý và xem tài liệu của bạn</p>
+        </div>
+        <div class="view-controls">
+        <div class="view-toggle">
+                <button onclick="setView('table')" class="view-btn active" id="tableViewBtn" data-tooltip="Xem dạng bảng">
+                    <span class="view-icon">📋</span>
+                    <span class="view-text">Bảng</span>
+            </button>
+                <button onclick="setView('grid')" class="view-btn" id="gridViewBtn" data-tooltip="Xem dạng thẻ">
+                    <span class="view-icon">📱</span>
+                    <span class="view-text">Thẻ</span>
+            </button>
+            </div>
+        </div>
+    </div>
+    {% if documents %}
+        <div style="margin-bottom: 1rem; color: var(--gray-600); font-size: 0.875rem;">
+            📚 Hiển thị {{ documents|length }} trong tổng số {{ total or 0 }} tài liệu
+            {% if q or title or tags %}
+                • 🔍 Kết quả tìm kiếm
+            {% endif %}
+            • 📄 Tối đa 5 tài liệu/trang
+            {% if total and total > 5 %}
+                • 🔄 Tự động chuyển trang khi cần
+            {% endif %}
+        </div>
+
+        <!-- Table View -->
+        <table class="documents-table">
+            <thead>
+                <tr>
+                    <th>📄 Tiêu đề</th>
+                    <th>🏷️ Tags</th>
+                    <th>📊 Loại</th>
+                    <th>📏 Kích thước</th>
+                    <th>📅 Ngày tạo</th>
+                    <th>⚡ Hành động</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for d in documents %}
+                <tr>
+                    <td>
+                        <a href="/documents/{{ d.id }}?q={{ q | urlencode }}" style="font-weight: 500; color: var(--primary);">
+                            {{ d.title | highlight(q or title) }}
+                        </a>
+                    </td>
+                    <td>
+                        {% if d.tags %}
+                            {% for tag in d.tags.split(',') %}
+                                <span class="tag-badge">
+                                    {{ tag.strip() | highlight(tags) }}
+                                </span>
+                            {% endfor %}
+                        {% else %}
+                            <span style="color: var(--gray-400); font-style: italic;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if d.mime_type %}
+                            {% if 'pdf' in d.mime_type %}
+                                <span class="file-type-badge pdf">📄 PDF</span>
+                            {% elif 'image' in d.mime_type %}
+                                <span class="file-type-badge image">🖼️ Hình ảnh</span>
+                            {% else %}
+                                <span class="file-type-badge Word ">📄 Word</span>
+                            {% endif %}
+                        {% else %}
+                            <span style="color: var(--gray-400);">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if d.filesize %}
+                            {{ '{:.1f}'.format(d.filesize / 1024 / 1024) }} MB
+                        {% else %}
+                            <span style="color: var(--gray-400);">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="font-size: 0.875rem;">
+                            {{ d.created_at.strftime('%d/%m/%Y') }}
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--gray-500);">
+                            {{ d.created_at.strftime('%H:%M') }}
+                        </div>
+                    </td>
+                    <td class="actions">
+                        <a href="/documents/{{ d.id }}?q={{ q | urlencode }}" class="action-link view">
+                            <span class="action-icon">👁️</span>
+                            <span class="action-text">Xem</span>
+                        </a>
+                        <a href="/documents/{{ d.id }}/download" class="action-link download">
+                            <span class="action-icon">📥</span>
+                            <span class="action-text">Tải</span>
+                        </a>
+                        <button onclick="deleteDoc({{ d.id }})" class="action-link delete">
+                            <span class="action-icon">🗑️</span>
+                            <span class="action-text">Xóa</span>
+                        </button>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Grid View -->
+        <div class="documents-grid" style="display: none;">
+            {% for d in documents %}
+            <div class="document-card">
+                <div class="header">
+                    <a href="/documents/{{ d.id }}?q={{ q | urlencode }}" style="font-weight: 500;">
+                        {{ d.title | highlight(q or title) }}
+                    </a>
+                </div>
+                <div class="content">
+                    {% if d.tags %}
+                        {% for tag in d.tags.split(',') %}
+                            <span class="tag-badge">
+                                {{ tag.strip() | highlight(tags) }}
+                            </span>
+                        {% endfor %}
+                    {% endif %}
+                    
+                    <div style="margin-top: 1rem;">
+                        {% if d.mime_type %}
+                            {% if 'pdf' in d.mime_type %}
+                                <span class="file-type-badge pdf">📄 PDF</span>
+                            {% elif 'image' in d.mime_type %}
+                                <span class="file-type-badge image">🖼️ Hình ảnh</span>
+                            {% else %}
+                                <span class="file-type-badge Word">📄 Word</span>
+                            {% endif %}
+                        {% endif %}
+                        
+                        {% if d.filesize %}
+                            <span style="color: var(--gray-500); font-size: 0.875rem; margin-left: 0.5rem;">
+                                {{ '{:.1f}'.format(d.filesize / 1024 / 1024) }} MB
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="footer">
+                    <div style="color: var(--gray-500); font-size: 0.75rem;">
+                        {{ d.created_at.strftime('%d/%m/%Y %H:%M') }}
+                    </div>
+                    <div class="actions">
+                        <a href="/documents/{{ d.id }}?q={{ q | urlencode }}" class="action-link view">
+                            <span class="action-icon">👁️</span>
+                            <span class="action-text">Xem</span>
+                        </a>
+                        <a href="/documents/{{ d.id }}/download" class="action-link download">
+                            <span class="action-icon">📥</span>
+                            <span class="action-text">Tải</span>
+                        </a>
+                        <button onclick="deleteDoc({{ d.id }})" class="action-link delete">
+                            <span class="action-icon">🗑️</span>
+                            <span class="action-text">Xóa</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+            {% if page > 1 %}
+                <button onclick="changePage({{ page - 1 }})" class="pagination-btn prev-btn">
+                    <span class="btn-icon">←</span>
+                    <span class="btn-text">Trước</span>
+                </button>
+            {% endif %}
+            
+            {% if total_pages > 1 %}
+            {% for p in range(max(1, page - 2), min(total_pages + 1, page + 3)) %}
+                    <button {% if p == page %}class="active pagination-btn page-btn"{% else %}class="pagination-btn page-btn"{% endif %} onclick="changePage({{ p }})">
+                    {{ p }}
+                </button>
+            {% endfor %}
+            {% endif %}
+
+            {% if page < total_pages %}
+                <button onclick="changePage({{ page + 1 }})" class="pagination-btn next-btn">
+                    <span class="btn-text">Sau</span>
+                    <span class="btn-icon">→</span>
+                </button>
+            {% endif %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            {% if q or title or tags %}
+                <h3>Không tìm thấy tài liệu</h3>
+                <p>Không có tài liệu nào phù hợp với tiêu chí tìm kiếm của bạn.</p>
+                <p class="mt-4">
+                    <a href="/documents/" class="button">🗑️ Xóa bộ lọc</a>
+                </p>
+            {% else %}
+                <h3>Chưa có tài liệu nào</h3>
+                <p>Hãy tải lên tài liệu đầu tiên để bắt đầu quản lý!</p>
+            {% endif %}
+        </div>
+    {% endif %}
+</section>
+
+
+<script>
+// Enhanced animated counter function
+function animateCounter(element) {
+    const target = parseInt(element.dataset.count);
+    const duration = 2000;
+    const start = 0;
+    const startTime = performance.now();
+    
+    function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Enhanced easing function for smoother animation
+        const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+        
+        const current = Math.floor(start + (target - start) * easeOutCubic);
+        element.textContent = current;
+        
+        if (progress < 1) {
+            requestAnimationFrame(update);
+        }
+    }
+    
+    requestAnimationFrame(update);
+}
+
+// Ripple effect for buttons
+function createRipple(event) {
+    const button = event.currentTarget;
+    const ripple = button.querySelector('.btn-ripple');
+    
+    if (ripple) {
+        const rect = button.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height);
+        const x = event.clientX - rect.left - size / 2;
+        const y = event.clientY - rect.top - size / 2;
+        
+        ripple.style.width = ripple.style.height = size + 'px';
+        ripple.style.left = x + 'px';
+        ripple.style.top = y + 'px';
+        ripple.style.animation = 'none';
+        ripple.offsetHeight; // Trigger reflow
+        ripple.style.animation = 'ripple 0.6s linear';
+    }
+}
+
+// File upload drag and drop
+function setupFileUpload() {
+    const uploadArea = document.getElementById('fileUploadArea');
+    const fileInput = document.getElementById('upload-file');
+    const fileInfo = document.getElementById('fileInfo');
+    
+    if (!uploadArea || !fileInput) return;
+    
+    // Drag and drop events
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadArea.classList.add('dragover');
+    });
+    
+    uploadArea.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadArea.classList.remove('dragover');
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uploadArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            validateFile(fileInput);
+        }
+    });
+    
+    // File input change event
+    fileInput.addEventListener('change', (e) => {
+        e.stopPropagation();
+        validateFile(fileInput);
+    });
+}
+
+// Enhanced file validation and preview
+function validateFile(input) {
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const file = input.files[0];
+    const fileInfo = document.getElementById('fileInfo');
+    const uploadArea = document.getElementById('fileUploadArea');
+    
+    if (file) {
+        if (file.size > maxSize) {
+            showAlert('File không được vượt quá 10MB', 'error');
+            input.value = '';
+            return;
+        }
+        
+        const allowedTypes = [
+            'application/pdf', 
+            'image/jpeg', 
+            'image/png',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/msword'
+        ];
+        if (!allowedTypes.includes(file.type)) {
+            showAlert('Chỉ chấp nhận file PDF, Word, JPEG hoặc PNG', 'error');
+            input.value = '';
+            return;
+        }
+        
+        // Show file preview
+        showFilePreview(file);
+    }
+}
+
+function showFilePreview(file) {
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = fileInfo.querySelector('.file-name');
+    const fileSize = fileInfo.querySelector('.file-size');
+    const fileIcon = fileInfo.querySelector('.file-icon');
+    
+    fileName.textContent = file.name;
+    fileSize.textContent = formatFileSize(file.size);
+    
+    // Set appropriate icon
+    if (file.type.includes('pdf')) {
+        fileIcon.textContent = '📄';
+        fileIcon.style.background = 'var(--danger)';
+    } else if (file.type.includes('image')) {
+        fileIcon.textContent = '🖼️';
+        fileIcon.style.background = 'var(--success)';
+    } else if (file.type.includes('word') || file.type.includes('document')) {
+        fileIcon.textContent = '📝';
+        fileIcon.style.background = 'var(--primary)';
+    }
+    
+    fileInfo.style.display = 'block';
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function removeFile() {
+    const fileInput = document.getElementById('upload-file');
+    const fileInfo = document.getElementById('fileInfo');
+    
+    fileInput.value = '';
+    fileInfo.style.display = 'none';
+}
+
+// Enhanced tooltip system
+function setupTooltips() {
+    const tooltipElements = document.querySelectorAll('[data-tooltip]');
+    
+    tooltipElements.forEach(element => {
+        element.addEventListener('mouseenter', showTooltip);
+        element.addEventListener('mouseleave', hideTooltip);
+    });
+}
+
+function showTooltip(event) {
+    const element = event.target;
+    const tooltipText = element.getAttribute('data-tooltip');
+    
+    if (!tooltipText) return;
+    
+    const tooltip = document.createElement('div');
+    tooltip.className = 'custom-tooltip';
+    tooltip.textContent = tooltipText;
+    tooltip.style.cssText = `
+        position: absolute;
+        background: var(--gray-800);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        white-space: nowrap;
+        z-index: 1000;
+        pointer-events: none;
+        opacity: 0;
+        transform: translateY(4px);
+        transition: all 0.2s ease;
+    `;
+    
+    document.body.appendChild(tooltip);
+    
+    const rect = element.getBoundingClientRect();
+    tooltip.style.left = rect.left + rect.width / 2 - tooltip.offsetWidth / 2 + 'px';
+    tooltip.style.top = rect.top - tooltip.offsetHeight - 8 + 'px';
+    
+    requestAnimationFrame(() => {
+        tooltip.style.opacity = '1';
+        tooltip.style.transform = 'translateY(0)';
+    });
+    
+    element._tooltip = tooltip;
+}
+
+function hideTooltip(event) {
+    const element = event.target;
+    const tooltip = element._tooltip;
+    
+    if (tooltip) {
+        tooltip.style.opacity = '0';
+        tooltip.style.transform = 'translateY(4px)';
+        setTimeout(() => {
+            if (tooltip.parentNode) {
+                tooltip.parentNode.removeChild(tooltip);
+            }
+        }, 200);
+        delete element._tooltip;
+    }
+}
+
+// Enhanced Intersection Observer for scroll animations
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            if (entry.target.classList.contains('stat-number')) {
+                animateCounter(entry.target);
+            }
+            
+            // Add animation class for AOS-like effect
+            entry.target.classList.add('aos-animate');
+            observer.unobserve(entry.target);
+        }
+    });
+}, {
+    threshold: 0.1,
+    rootMargin: '50px'
+});
+
+// View state
+let currentView = 'table';
+
+// Initialize all features
+document.addEventListener('DOMContentLoaded', () => {
+// Initialize animations and observers
+    initializeAnimations();
+    
+    // Setup interactive features
+    setupInteractiveFeatures();
+    
+    // Setup file upload
+    setupFileUpload();
+    
+    // Setup tooltips
+    setupTooltips();
+    
+    // Set initial document view
+    const preferredView = localStorage.getItem('documentView') || 'table';
+    setView(preferredView);
+});
+
+function initializeAnimations() {
+    // Observe stat numbers for animation
+    document.querySelectorAll('.stat-number').forEach(el => {
+        observer.observe(el);
+    });
+    
+    // Observe elements with data-aos attribute
+    document.querySelectorAll('[data-aos]').forEach(el => {
+        observer.observe(el);
+    });
+    
+    // Observe document cards for animation
+    document.querySelectorAll('.document-card').forEach(el => {
+        observer.observe(el);
+    });
+}
+
+function setupInteractiveFeatures() {
+    // Add ripple effects to buttons
+    document.querySelectorAll('.btn, .action-btn').forEach(btn => {
+        btn.addEventListener('click', createRipple);
+    });
+    
+    // Add ripple effects to action links
+    document.querySelectorAll('.action-link').forEach(link => {
+        link.addEventListener('click', createRipple);
+    });
+    
+    // Add hover effects to action buttons
+    document.querySelectorAll('.action-btn').forEach(btn => {
+        btn.addEventListener('mousemove', (e) => {
+            const rect = btn.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            btn.style.setProperty('--x', `${x}px`);
+            btn.style.setProperty('--y', `${y}px`);
+        });
+    });
+    
+    // Add smooth scroll to internal links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+    });
+});
+
+    // Add loading states to action links
+    document.querySelectorAll('.action-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            // Add loading state
+            this.classList.add('loading');
+            
+            // Remove loading state after a delay
+            setTimeout(() => {
+                this.classList.remove('loading');
+            }, 2000);
+        });
+    });
+}
+
+// Enhanced toggle functions with animations
+function toggleSearch() {
+    const section = document.getElementById('searchSection');
+    const uploadSection = document.getElementById('uploadSection');
+    
+    if (section.style.display === 'none' || !section.style.display) {
+        // Close upload section if open
+        if (uploadSection.style.display === 'block') {
+        uploadSection.style.display = 'none';
+        }
+        
+        // Show search section with animation
+        section.style.display = 'block';
+        section.style.opacity = '0';
+        section.style.transform = 'translateY(-20px)';
+        
+        requestAnimationFrame(() => {
+            section.style.transition = 'all 0.3s ease';
+            section.style.opacity = '1';
+            section.style.transform = 'translateY(0)';
+        });
+        
+        // Focus on first input
+        setTimeout(() => {
+            const firstInput = section.querySelector('input');
+            if (firstInput) firstInput.focus();
+        }, 300);
+    } else {
+        // Hide search section with animation
+        section.style.transition = 'all 0.3s ease';
+        section.style.opacity = '0';
+        section.style.transform = 'translateY(-20px)';
+        
+        setTimeout(() => {
+            section.style.display = 'none';
+        }, 300);
+    }
+}
+
+function toggleUpload() {
+    const section = document.getElementById('uploadSection');
+    const searchSection = document.getElementById('searchSection');
+    
+    if (section.style.display === 'none' || !section.style.display) {
+        // Close search section if open
+        if (searchSection.style.display === 'block') {
+        searchSection.style.display = 'none';
+        }
+        
+        // Show upload section with animation
+        section.style.display = 'block';
+        section.style.opacity = '0';
+        section.style.transform = 'translateY(-20px)';
+        
+        requestAnimationFrame(() => {
+            section.style.transition = 'all 0.3s ease';
+            section.style.opacity = '1';
+            section.style.transform = 'translateY(0)';
+        });
+        
+        // Focus on first input
+        setTimeout(() => {
+            const firstInput = section.querySelector('input');
+            if (firstInput) firstInput.focus();
+        }, 300);
+    } else {
+        // Hide upload section with animation
+        section.style.transition = 'all 0.3s ease';
+        section.style.opacity = '0';
+        section.style.transform = 'translateY(-20px)';
+        
+        setTimeout(() => {
+            section.style.display = 'none';
+        }, 300);
+    }
+}
+
+// This function is now defined above in the enhanced version
+
+async function deleteDoc(id) {
+    if (!confirm('Bạn có chắc muốn xóa tài liệu này?')) return;
+    
+    try {
+        const res = await fetch(`/documents/${id}`, { 
+            method: 'DELETE'
+        });
+        if (res.ok) {
+            window.location.reload();
+        } else {
+            throw new Error('Lỗi khi xóa');
+        }
+    } catch (err) {
+        showAlert('Không thể xóa tài liệu: ' + err.message);
+    }
+}
+
+function changePage(page) {
+    const url = new URL(window.location);
+    url.searchParams.set('page', page);
+    window.location = url;
+}
+
+function filterByType(type) {
+    const url = new URL(window.location);
+    const currentType = url.searchParams.get('type');
+    
+    if (currentType === type) {
+        url.searchParams.delete('type');
+        document.getElementById(type + 'Filter').classList.remove('active');
+    } else {
+        url.searchParams.set('type', type);
+        
+        // Reset other filters
+        document.getElementById('pdfFilter').classList.remove('active');
+        document.getElementById('imageFilter').classList.remove('active');
+        
+        // Activate current filter
+        document.getElementById(type + 'Filter').classList.add('active');
+    }
+    
+    window.location = url;
+}
+
+function setView(view) {
+    currentView = view;
+    localStorage.setItem('documentView', view);
+    
+    // Update buttons with animation
+    const tableBtn = document.getElementById('tableViewBtn');
+    const gridBtn = document.getElementById('gridViewBtn');
+    
+    tableBtn.classList.toggle('active', view === 'table');
+    gridBtn.classList.toggle('active', view === 'grid');
+    
+    // Update view with smooth transition
+    const tableView = document.querySelector('.documents-table');
+    const gridView = document.querySelector('.documents-grid');
+    
+    if (view === 'table') {
+        if (gridView) {
+            gridView.style.opacity = '0';
+            gridView.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+        gridView.style.display = 'none';
+            }, 200);
+        }
+        
+        if (tableView) {
+        tableView.style.display = 'table';
+            tableView.style.opacity = '0';
+            tableView.style.transform = 'scale(0.95)';
+            requestAnimationFrame(() => {
+                tableView.style.transition = 'all 0.3s ease';
+                tableView.style.opacity = '1';
+                tableView.style.transform = 'scale(1)';
+            });
+        }
+    } else {
+        if (tableView) {
+            tableView.style.opacity = '0';
+            tableView.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+        tableView.style.display = 'none';
+            }, 200);
+        }
+        
+        if (gridView) {
+        gridView.style.display = 'grid';
+            gridView.style.opacity = '0';
+            gridView.style.transform = 'scale(0.95)';
+            requestAnimationFrame(() => {
+                gridView.style.transition = 'all 0.3s ease';
+                gridView.style.opacity = '1';
+                gridView.style.transform = 'scale(1)';
+            });
+        }
+    }
+}
+
+// Update document list without page refresh
+async function updateDocumentList() {
+    try {
+        // Get current URL parameters
+        const url = new URL(window.location);
+        const params = new URLSearchParams(url.search);
+        
+        // Fetch updated document list
+        const response = await fetch(`/documents/?${params.toString()}`);
+        
+        // Check if response is a redirect
+        if (response.redirected) {
+            // If redirected, go to the new URL
+            window.location.href = response.url;
+            return;
+        }
+        
+        const html = await response.text();
+        
+        // Parse the response to extract document list
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const newDocumentList = doc.querySelector('.documents-section');
+        
+        if (newDocumentList) {
+            // Replace the document list
+            const currentDocumentList = document.querySelector('.documents-section');
+            if (currentDocumentList) {
+                currentDocumentList.innerHTML = newDocumentList.innerHTML;
+                
+                // Re-initialize animations and interactions
+                initializeAnimations();
+                setupInteractiveFeatures();
+                
+                // Update stats
+                updateStats();
+            }
+        }
+    } catch (error) {
+        console.error('Error updating document list:', error);
+        // Fallback to page refresh
+        setTimeout(() => window.location.reload(), 2000);
+    }
+}
+
+// Update stats without refresh
+async function updateStats() {
+    try {
+        const response = await fetch('/api/stats');
+        const stats = await response.json();
+        
+        // Update stat numbers with animation
+        const statNumbers = document.querySelectorAll('.stat-number');
+        statNumbers.forEach((stat, index) => {
+            const newValue = [stats.total, stats.displayed, stats.pages, stats.currentPage][index];
+            if (newValue !== undefined) {
+                stat.dataset.count = newValue;
+                animateCounter(stat);
+            }
+        });
+    } catch (error) {
+        console.error('Error updating stats:', error);
+    }
+}
+
+// Show alert notification
+function showAlert(message, type = 'info') {
+    // Remove existing alerts
+    const existingAlerts = document.querySelectorAll('.alert-notification');
+    existingAlerts.forEach(alert => alert.remove());
+    
+    // Create alert element
+    const alert = document.createElement('div');
+    alert.className = `alert-notification alert-${type}`;
+    alert.innerHTML = `
+        <div class="alert-content">
+            <span class="alert-icon">${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span>
+            <span class="alert-text">${message}</span>
+            <button class="alert-close" onclick="this.parentElement.parentElement.remove()">×</button>
+        </div>
+    `;
+    
+    // Add styles
+    alert.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        max-width: 400px;
+    `;
+    
+    // Add to page
+    document.body.appendChild(alert);
+    
+    // Animate in
+    setTimeout(() => {
+        alert.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.remove();
+                }
+            }, 300);
+        }
+    }, 5000);
+}
+
+// Advanced Search Functions
+function toggleAdvancedOptions() {
+    const options = document.getElementById('advancedOptions');
+    const icon = document.getElementById('toggleIcon');
+    
+    if (options.style.display === 'none') {
+        options.style.display = 'block';
+        icon.textContent = '▲';
+    } else {
+        options.style.display = 'none';
+        icon.textContent = '▼';
+    }
+}
+
+// Search suggestions
+let searchTimeout;
+const searchInput = document.getElementById('q');
+const suggestionsDiv = document.getElementById('searchSuggestions');
+
+if (searchInput) {
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+            suggestionsDiv.style.display = 'none';
+            return;
+        }
+        
+        searchTimeout = setTimeout(() => {
+            fetchSuggestions(query);
+        }, 300);
+    });
+    
+    searchInput.addEventListener('blur', function() {
+        setTimeout(() => {
+            suggestionsDiv.style.display = 'none';
+        }, 200);
+    });
+    
+    searchInput.addEventListener('focus', function() {
+        if (this.value.trim().length >= 2) {
+            fetchSuggestions(this.value.trim());
+        }
+    });
+}
+
+async function fetchSuggestions(query) {
+    try {
+        const response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(query)}&limit=5`);
+        const data = await response.json();
+        
+        if (data.suggestions && data.suggestions.length > 0) {
+            displaySuggestions(data.suggestions);
+        } else {
+            suggestionsDiv.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error fetching suggestions:', error);
+        suggestionsDiv.style.display = 'none';
+    }
+}
+
+function displaySuggestions(suggestions) {
+    suggestionsDiv.innerHTML = '';
+    
+    suggestions.forEach(suggestion => {
+        const item = document.createElement('div');
+        item.className = 'suggestion-item';
+        item.innerHTML = `
+            <span class="suggestion-type ${suggestion.type}">${suggestion.type}</span>
+            <span class="suggestion-text">${suggestion.highlight}</span>
+        `;
+        
+        item.addEventListener('click', function() {
+            searchInput.value = suggestion.text;
+            suggestionsDiv.style.display = 'none';
+            searchInput.focus();
+        });
+        
+        suggestionsDiv.appendChild(item);
+    });
+    
+    suggestionsDiv.style.display = 'block';
+}
+
+// Handle upload form with progress
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const data = new FormData(form);
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    try {
+        // Show loading state
+        submitBtn.innerHTML = '<span class="btn-icon">⏳</span><span class="btn-text">Đang xử lý...</span>';
+        submitBtn.disabled = true;
+        
+        const res = await fetch(form.action, {
+            method: 'POST',
+            body: data
+        });
+        
+        const result = await res.json();
+        
+        if (res.ok) {
+            showAlert('🎉 ' + result.message, 'success');
+            form.reset();
+            toggleUpload();
+            
+            // Update document list without refresh
+            updateDocumentList();
+        } else {
+            throw new Error(result.detail || 'Lỗi khi tải lên');
+        }
+    } catch (err) {
+        showAlert('❌ ' + err.message, 'error');
+    } finally {
+        // Reset button state
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+});
+</script>
+{% endblock %}
